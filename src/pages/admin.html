@@ -4,8 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <title>ANEON - Panel Admin</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="../css/css.css">
 </head>
 
 <body class="bg-light">
@@ -21,20 +27,163 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- SCRIPT PRINCIPAL (Subiendo un nivel con ../ para llegar a src/js/app.js) -->
     <script src="../js/app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Cargar el header externo
             cargarHeader('header-container');
-
-            // 2. Validar que el usuario sea administrador antes de mostrar el panel
             const sesion = getSesionActual();
             if (!sesion || sesion.rol !== 'admin') {
                 alert('Acceso denegado. Se requieren permisos de administrador.');
                 window.location.href = '../../index.html';
                 return;
             }
+
+            cargarPanelAdmin();
         });
+
+        function cargarPanelAdmin() {
+            let productos = JSON.parse(localStorage.getItem('productos')) || [];
+            let pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+            let contenedor = document.getElementById('contenedorAdmin');
+
+            let filasProductos = productos.map(p => `
+                <tr>
+                    <td><img src="${p.imagen}" style="width: 40px; height: 40px; object-fit: cover;" class="rounded"></td>
+                    <td>${p.nombre}</td>
+                    <td>$${p.precio.toFixed(2)}</td>
+                    <td>${p.categoria}</td>
+                    <td>${p.stock}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="abrirModalEditar(${p.id})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarProducto(${p.id})"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            let filasPedidos = pedidos.map(p => `
+                <tr>
+                    <td>${p.ticket}</td>
+                    <td>${p.cliente}</td>
+                    <td>$${p.total.toFixed(2)}</td>
+                    <td><span class="badge ${p.estado === 'Entregado' ? 'bg-success' : 'bg-warning'}">${p.estado}</span></td>
+                    <td>
+                        ${p.estado === 'Pendiente de Entrega' ? `<button class="btn btn-sm btn-success" onclick="marcarEntregado('${p.ticket}')">Marcar Entregado</button>` : 'Completado'}
+                    </td>
+                </tr>
+            `).join('');
+
+            contenedor.innerHTML = `
+                <h2>Panel de Administración</h2>
+                <hr>
+                <h4 class="mt-4">Gestión de Inventario (CRUD)</h4>
+                <button class="btn btn-primary mb-3" onclick="abrirModalCrear()"><i class="fa-solid fa-plus"></i> Agregar Nuevo Accesorio</button>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped bg-white shadow-sm">
+                        <thead class="table-dark"><tr><th>Img</th><th>Nombre</th><th>Precio</th><th>Categoría</th><th>Stock</th><th>Acciones</th></tr></thead>
+                        <tbody>${filasProductos.length === 0 ? '<tr><td colspan="6" class="text-center">No hay productos.</td></tr>' : filasProductos}</tbody>
+                    </table>
+                </div>
+
+                <h4 class="mt-5">Gestión de Pedidos y Entregas (Historial de Ventas)</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped bg-white shadow-sm">
+                        <thead class="table-dark"><tr><th>Ticket</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Acción</th></tr></thead>
+                        <tbody>${filasPedidos.length === 0 ? '<tr><td colspan="5" class="text-center">No hay pedidos registrados.</td></tr>' : filasPedidos}</tbody>
+                    </table>
+                </div>
+
+                <!-- MODAL PARA CREAR/EDITAR PRODUCTOS -->
+                <div class="modal fade" id="modalProducto" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalTitulo">Gestión de Producto</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form onsubmit="guardarProducto(event)">
+                                    <input type="hidden" id="prodId">
+                                    <div class="mb-3"><label class="form-label">Nombre</label><input type="text" class="form-control" id="prodNombre" required></div>
+                                    <div class="mb-3"><label class="form-label">Precio ($)</label><input type="number" step="0.01" class="form-control" id="prodPrecio" required></div>
+                                    <div class="mb-3"><label class="form-label">Categoría</label><input type="text" class="form-control" id="prodCategoria" required></div>
+                                    <div class="mb-3"><label class="form-label">Stock</label><input type="number" class="form-control" id="prodStock" required></div>
+                                    <div class="mb-3"><label class="form-label">URL de Imagen</label><input type="url" class="form-control" id="prodImagen" required></div>
+                                    <button type="submit" class="btn btn-success w-100">Guardar Cambios</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function abrirModalCrear() {
+            document.getElementById('prodId').value = '';
+            document.getElementById('prodNombre').value = '';
+            document.getElementById('prodPrecio').value = '';
+            document.getElementById('prodCategoria').value = '';
+            document.getElementById('prodStock').value = '';
+            document.getElementById('prodImagen').value = '';
+            document.getElementById('modalTitulo').innerText = 'Crear Nuevo Producto';
+            new bootstrap.Modal(document.getElementById('modalProducto')).show();
+        }
+
+        function abrirModalEditar(id) {
+            let productos = JSON.parse(localStorage.getItem('productos'));
+            let p = productos.find(item => item.id === id);
+            document.getElementById('prodId').value = p.id;
+            document.getElementById('prodNombre').value = p.nombre;
+            document.getElementById('prodPrecio').value = p.precio;
+            document.getElementById('prodCategoria').value = p.categoria;
+            document.getElementById('prodStock').value = p.stock;
+            document.getElementById('prodImagen').value = p.imagen;
+            document.getElementById('modalTitulo').innerText = 'Editar Producto';
+            new bootstrap.Modal(document.getElementById('modalProducto')).show();
+        }
+
+        function guardarProducto(e) {
+            e.preventDefault();
+            const id = document.getElementById('prodId').value;
+            const nombre = document.getElementById('prodNombre').value;
+            const precio = parseFloat(document.getElementById('prodPrecio').value);
+            const categoria = document.getElementById('prodCategoria').value;
+            const stock = parseInt(document.getElementById('prodStock').value);
+            const imagen = document.getElementById('prodImagen').value;
+
+            let productos = JSON.parse(localStorage.getItem('productos')) || [];
+
+            if (id) {
+                let index = productos.findIndex(p => p.id == id);
+                productos[index] = { id: parseInt(id), nombre, precio, categoria, stock, imagen };
+            } else {
+                const nuevoId = productos.length > 0 ? productos[productos.length - 1].id + 1 : 1;
+                productos.push({ id: nuevoId, nombre, precio, categoria, stock, imagen });
+            }
+
+            localStorage.setItem('productos', JSON.stringify(productos));
+            bootstrap.Modal.getInstance(document.getElementById('modalProducto')).hide();
+            cargarPanelAdmin();
+        }
+
+        function eliminarProducto(id) {
+            if (confirm('¿Está seguro de eliminar este producto?')) {
+                let productos = JSON.parse(localStorage.getItem('productos'));
+                productos = productos.filter(p => p.id !== id);
+                localStorage.setItem('productos', JSON.stringify(productos));
+                cargarPanelAdmin();
+            }
+        }
+
+        function marcarEntregado(ticket) {
+            let pedidos = JSON.parse(localStorage.getItem('pedidos'));
+            let pedido = pedidos.find(p => p.ticket === ticket);
+            if (pedido) {
+                pedido.estado = 'Entregado';
+                localStorage.setItem('pedidos', JSON.stringify(pedidos));
+                cargarPanelAdmin();
+            }
+        }
     </script>
 </body>
 
