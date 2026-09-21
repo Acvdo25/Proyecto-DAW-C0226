@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ANEON - Carrito de Compras</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="../css/css.css">
+</head>
+
+<body class="bg-light">
+
+    <!-- CONTENEDOR DEL NAVBAR DINÁMICO -->
+    <div id="header-container"></div>
+
+    <!-- CONTENEDOR PRINCIPAL DEL CARRITO -->
+    <div class="container my-4" id="contenedorCarrito">
+        <!-- La tabla y los productos se cargan dinámicamente mediante JavaScript -->
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarHeader('header-container');
+            const sesion = getSesionActual();
+            if (!sesion || sesion.rol !== 'cliente') {
+                alert('Debe iniciar sesión como cliente para ver el carrito.');
+                window.location.href = 'login.html';
+                return;
+            }
+            cargarCarrito();
+        });
+
+        function cargarCarrito() {
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            let total = carrito.reduce((sum, item) => sum + item.precio, 0);
+            let contenedor = document.getElementById('contenedorCarrito');
+
+            let filas = carrito.map((item, index) => `
+                <tr>
+                    <td><img src="${item.imagen}" style="width: 50px; height: 50px; object-fit: cover;" class="rounded"></td>
+                    <td>${item.nombre}</td>
+                    <td>$${item.precio.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-danger" onclick="eliminarDelCarrito(${index})"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+            `).join('');
+
+            contenedor.innerHTML = `
+                <h2>Carrito de Compras</h2>
+                <hr>
+                ${carrito.length === 0 ? `
+                    <div class="alert alert-info text-center">
+                        <p class="mb-0">Su carrito está vacío. ¡Explore el catálogo para agregar accesorios!</p>
+                        <a href="../../index.html" class="btn btn-primary mt-3">Ir al Catálogo</a>
+                    </div>
+                ` : `
+                    <div class="table-responsive">
+                        <table class="table table-striped bg-white shadow-sm align-middle">
+                            <thead class="table-dark">
+                                <tr><th>Imagen</th><th>Producto</th><th>Precio</th><th>Acción</th></tr>
+                            </thead>
+                            <tbody>${filas}</tbody>                         </table>                     </div>                     <h4 class="text-end mt-3">Total a Pagar: $${total.toFixed(2)}</h4>
+                    <button class="btn btn-success float-end mt-2" onclick="confirmarCompra()">
+                        <i class="fa-solid fa-check"></i> Confirmar Pedido y Generar Ticket
+                    </button>
+                `}
+            `;
+        }
+
+        function eliminarDelCarrito(index) {
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            carrito.splice(index, 1);
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+
+            // Recargar la vista del carrito y actualizar el contador del navbar
+            cargarHeader('header-container');
+            cargarCarrito();
+        }
+
+        function confirmarCompra() {
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            let sesion = getSesionActual();
+            if (carrito.length === 0) return;
+
+            // Generar código de ticket único aleatorio
+            const codigoTicket = 'TICKET-' + Math.floor(100000 + Math.random() * 900000);
+            const nuevoPedido = {
+                ticket: codigoTicket,
+                cliente: sesion.nombre,
+                email: sesion.email,
+                productos: carrito,
+                total: carrito.reduce((sum, item) => sum + item.precio, 0),
+                estado: 'Pendiente de Entrega'
+            };
+
+            // Guardar en la lista general de pedidos
+            let pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+            pedidos.push(nuevoPedido);
+            localStorage.setItem('pedidos', JSON.stringify(pedidos));
+
+            // Vaciar el carrito actual
+            localStorage.setItem('carrito', JSON.stringify([]));
+
+            alert(`¡Compra confirmada con éxito!\nSu código de Ticket es: ${codigoTicket}`);
+
+            // Redirigir al historial del cliente
+            window.location.href = 'historial.html';
+        }
+    </script>
+</body>
+
+</html>
