@@ -29,7 +29,15 @@ if (!localStorage.getItem('usuarios')) {
     localStorage.setItem('usuarios', JSON.stringify(usuariosIniciales));
 }
 
-if (!localStorage.getItem('pedidos')) { localStorage.setItem('pedidos', JSON.stringify([])); }
+// Inicializar pedidos con datos de prueba (incluyendo fechas) para probar las gráficas
+if (!localStorage.getItem('pedidos')) {
+    const pedidosIniciales = [
+        { ticket: 'TICKET-100100', cliente: 'Juan Pérez', email: 'cliente@electronova.com', productos: [{nombre: 'Audífonos Inalámbricos Pro', precio: 45.99}], total: 45.99, estado: 'Entregado', fecha: '2026-08-15T10:00:00Z' },
+        { ticket: 'TICKET-100101', cliente: 'María López', email: 'maria@ejemplo.com', productos: [{nombre: 'Cargador Rápido USB-C 65W', precio: 25.50}, {nombre: 'Cargador Rápido USB-C 65W', precio: 25.50}], total: 51.00, estado: 'Entregado', fecha: '2026-09-10T14:30:00Z' },
+        { ticket: 'TICKET-100102', cliente: 'Juan Pérez', email: 'cliente@electronova.com', productos: [{nombre: 'Smartwatch Deportivo X', precio: 89.99}, {nombre: 'Audífonos Inalámbricos Pro', precio: 45.99}], total: 135.98, estado: 'Pendiente de Entrega', fecha: '2026-10-05T09:15:00Z' }
+    ];
+    localStorage.setItem('pedidos', JSON.stringify(pedidosIniciales));
+}
 if (!localStorage.getItem('carrito')) { localStorage.setItem('carrito', JSON.stringify([])); }
 
 // Obtener sesión actual
