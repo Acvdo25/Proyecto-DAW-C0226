@@ -1,0 +1,90 @@
+body {
+    background-color: #050B14;
+}
+
+nav {
+    background-color: #0B2233;
+    color: white;
+}
+nav button {
+    color: white;
+    background-color: white;
+}
+.hero-section {
+    background: linear-gradient(135deg, #08BDEB, #12D9D2);
+    box-shadow: 0 0 30px rgba(8,189,235,.15);
+    color: #F5F9FC;
+    padding: 40px 0;
+    border-color: #16445A;
+}
+
+.product-card img {
+    height: 180px;
+    object-fit: cover;
+}
+
+.aneon-footer {
+    background: #0A1D2B;
+    color: #A7B6C5;
+    border-top: 1px solid #16445A;
+}
+
+.aneon-logo {
+    color: #F5F9FC;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.aneon-logo span {
+    color: #08BDEB;
+}
+
+.aneon-footer small {
+    color: #607484;
+    font-size: 12px;
+}
+
+.aneon-footer a {
+    color: #A7B6C5;
+    text-decoration: none;
+    font-size: 14px;
+    margin: 0 8px;
+    transition: 0.2s;
+}
+
+.aneon-footer a:hover {
+    color: #08BDEB;
+}
+
+.aneon-footer .social {
+    display: inline-flex;
+
+    width: 34px;
+    height: 34px;
+
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid #16445A;
+    border-radius: 6px;
+
+    margin: 0 3px;
+
+    color: #A7B6C5;
+}
+
+.aneon-footer .social:hover {
+    color: #08BDEB;
+    border-color: #08BDEB;
+}
+
+.aneon-footer hr {
+    border: 0;
+    border-top: 1px solid #16445A;
+    margin: 20px 0;
+}
+
+.copyright {
+    color: #607484 !important;
+}
