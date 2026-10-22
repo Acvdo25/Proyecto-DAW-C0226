@@ -39,6 +39,7 @@ if (!localStorage.getItem('pedidos')) {
     localStorage.setItem('pedidos', JSON.stringify(pedidosIniciales));
 }
 if (!localStorage.getItem('carrito')) { localStorage.setItem('carrito', JSON.stringify([])); }
+if (!localStorage.getItem('wishlist')) { localStorage.setItem('wishlist', JSON.stringify([])); }
 
 // Obtener sesión actual
 function getSesionActual() {
@@ -89,7 +90,12 @@ function actualizarMenuSegunSesion() {
     } else {
         if (sesion.rol === 'cliente') {
             const carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            const wishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
+            // Filtramos la wishlist para saber cuántos favoritos tiene este usuario
+            const misFavoritos = wishlist.filter(item => item.email === sesion.email);
+            
             html += `
+                <li class="nav-item"><a class="nav-link text-white" href="${prefix}wishlist.html"><i class="fa-solid fa-heart text-danger"></i> Favoritos (${misFavoritos.length})</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="${prefix}carrito.html"><i class="fa-solid fa-cart-shopping"></i> Carrito (${carrito.length})</a></li>
                 <li class="nav-item"><a class="nav-link text-white" href="${prefix}historial.html">Mis Compras</a></li>
             `;
@@ -110,4 +116,62 @@ function cerrarSesion(enPages) {
     localStorage.removeItem('sesionActual');
     localStorage.setItem('carrito', JSON.stringify([]));
     window.location.href = enPages ? '../../index.html' : 'index.html';
+}
+// Función para agregar o quitar de la lista de deseos
+function toggleWishlist(idProducto) {
+    const sesion = getSesionActual();
+    if (!sesion || sesion.rol !== 'cliente') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Acceso Denegado',
+            text: 'Debes iniciar sesión para agregar a favoritos.'
+        });
+        return;
+    }
+
+    let wishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
+    let productos = JSON.parse(localStorage.getItem('productos')) || [];
+    const producto = productos.find(p => p.id === idProducto);
+
+    // Buscar si ya lo tiene en favoritos este cliente
+    const index = wishlist.findIndex(item => item.id === idProducto && item.email === sesion.email);
+
+    if (index === -1) {
+        // No está, lo agregamos
+        wishlist.push({ ...producto, email: sesion.email });
+        Swal.fire({
+            icon: 'success',
+            title: '¡Agregado a Favoritos!',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    } else {
+        // Ya está, lo quitamos
+        wishlist.splice(index, 1);
+        Swal.fire({
+            icon: 'info',
+            title: 'Eliminado de Favoritos',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    }
+
+    localStorage.setItem('wishlist', JSON.stringify(wishlist));
+    
+    // Si estamos en la página del catálogo, recargamos para que el corazón cambie
+    if (typeof cargarCatalogo === 'function') {
+        cargarCatalogo();
+    }
+    // Si estamos en la wishlist, la recargamos
+    if (typeof cargarWishlist === 'function') {
+        cargarWishlist();
+    }
+    
+    // Actualizamos el contador del menú (funciona con la estructura de loadHeader)
+    const enPages = window.location.pathname.includes('/src/pages/');
+    actualizarMenuSegunSesion(enPages);
 }
