@@ -3,19 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>ANEON - Panel Admin</title>
+    <title>aneon - Panel Admin</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome -->
+    <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="../css/css.css">
-    <!-- SweetAlert2 CDN -->
+    <!-- SweetAlert2 CDN para validaciones y alertas -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Librería Chart.js para gráficas -->
+    <!-- Chart.js para el módulo de gráficas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- CSS Propio del Proyecto -->
+    <link rel="stylesheet" href="../css/css.css">
 </head>
 
 <body class="bg-light">
@@ -25,21 +23,33 @@
 
     <!-- CONTENEDOR PRINCIPAL DEL PANEL -->
     <div class="container my-4" id="contenedorAdmin">
-        <!-- El contenido del CRUD y pedidos se carga por JavaScript -->
+        <!-- El contenido del CRUD, pedidos y gráficas se carga por JavaScript -->
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- SCRIPT PRINCIPAL (Subiendo un nivel con ../ para llegar a src/js/app.js) -->
     <script src="../js/app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // 1. Cargar el header externo
             cargarHeader('header-container');
+
+            // 2. Validar que el usuario sea administrador antes de mostrar el panel
             const sesion = getSesionActual();
             if (!sesion || sesion.rol !== 'admin') {
-                Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'Se requieren permisos de administrador.' }).then(() => { window.location.href = '../../index.html'; });
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Acceso denegado',
+                    text: 'Se requieren permisos de administrador.'
+                }).then(() => {
+                    window.location.href = '../../index.html';
+                });
                 return;
             }
+
+            // 3. Cargar el contenido del panel admin
             cargarPanelAdmin();
         });
 
@@ -51,90 +61,98 @@
             let filasProductos = productos.map(p => `
                 <tr>
                     <td><img src="${p.imagen}" style="width: 40px; height: 40px; object-fit: cover;" class="rounded"></td>
-                    <td>${p.nombre}</td>
-                    <td>$${p.precio.toFixed(2)}</td>
-                    <td>${p.categoria}</td>
+                    <td class="fw-medium">${p.nombre}</td>
+                    <td class="text-success fw-bold">$${p.precio.toFixed(2)}</td>
+                    <td><span class="badge bg-secondary">${p.categoria}</span></td>
                     <td>${p.stock}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning" onclick="abrirModalEditar(${p.id})"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarProducto(${p.id})"><i class="fa-solid fa-trash"></i></button>
+                        <button class="btn btn-sm btn-warning shadow-sm" onclick="abrirModalEditar(${p.id})" title="Editar"><i class="fa-solid fa-pen text-white"></i></button>
+                        <button class="btn btn-sm btn-danger shadow-sm ms-1" onclick="eliminarProducto(${p.id})" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
             `).join('');
 
             let filasPedidos = pedidos.map(p => `
                 <tr>
-                    <td>${p.ticket}</td>
+                    <td class="fw-bold">${p.ticket}</td>
                     <td>${p.cliente}</td>
-                    <td>$${p.total.toFixed(2)}</td>
-                    <td><span class="badge ${p.estado === 'Entregado' ? 'bg-success' : 'bg-warning'}">${p.estado}</span></td>
+                    <td class="fw-bold">$${p.total.toFixed(2)}</td>
+                    <td><span class="badge ${p.estado === 'Entregado' ? 'bg-success' : 'bg-warning text-dark'} shadow-sm">${p.estado}</span></td>
                     <td>
-                        ${p.estado === 'Pendiente de Entrega' ? `<button class="btn btn-sm btn-success" onclick="marcarEntregado('${p.ticket}')">Marcar Entregado</button>` : 'Completado'}
+                        ${p.estado === 'Pendiente de Entrega' ? `<button class="btn btn-sm btn-success shadow-sm" onclick="marcarEntregado('${p.ticket}')"><i class="fa-solid fa-check me-1"></i> Marcar Entregado</button>` : '<span class="text-muted"><i class="fa-solid fa-check-double text-success"></i> Completado</span>'}
                     </td>
                 </tr>
             `).join('');
 
             contenedor.innerHTML = `
-                <h2>Panel de Administración</h2>
-                <hr>
+                <h2 class="fw-bold text-dark"><i class="fa-solid fa-gauge text-primary"></i> Panel de Administración</h2>
+                <hr class="mb-4">
                 
-                <!-- NUEVO MÓDULO DE ESTADÍSTICAS -->
-                <h4 class="mt-4 text-primary"><i class="fa-solid fa-chart-pie"></i> Reportes y Estadísticas</h4>
+                <!-- MÓDULO DE REPORTES Y ESTADÍSTICAS (GRÁFICAS) -->
+                <h4 class="mt-4 fw-semibold text-dark"><i class="fa-solid fa-chart-pie text-primary"></i> Reportes y Estadísticas</h4>
                 <div class="row mb-5">
-                    <div class="col-md-6">
-                        <div class="card shadow-sm p-3">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <div class="card shadow-sm p-3 bg-white border">
                             <canvas id="graficaProductos"></canvas>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card shadow-sm p-3">
+                        <div class="card shadow-sm p-3 bg-white border">
                             <canvas id="graficaMeses"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <h4 class="mt-4">Gestión de Inventario (CRUD)</h4>
-                <button class="btn btn-primary mb-3" onclick="abrirModalCrear()"><i class="fa-solid fa-plus"></i> Agregar Nuevo Accesorio</button>
+                <h4 class="mt-4 fw-semibold text-dark">Gestión de Inventario (CRUD)</h4>
+                <button class="btn btn-primary mb-3 shadow-sm fw-medium" onclick="abrirModalCrear()">
+                    <i class="fa-solid fa-plus me-1"></i> Agregar Nuevo Accesorio
+                </button>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped bg-white shadow-sm">
+                    <table class="table table-bordered table-striped bg-white shadow-sm align-middle">
                         <thead class="table-dark"><tr><th>Img</th><th>Nombre</th><th>Precio</th><th>Categoría</th><th>Stock</th><th>Acciones</th></tr></thead>
-                        <tbody>${filasProductos.length === 0 ? '<tr><td colspan="6" class="text-center">No hay productos.</td></tr>' : filasProductos}</tbody>
+                        <tbody>${filasProductos.length === 0 ? '<tr><td colspan="6" class="text-center text-muted py-3">No hay productos en el inventario.</td></tr>' : filasProductos}</tbody>
                     </table>
                 </div>
 
-                <h4 class="mt-5">Gestión de Pedidos y Entregas</h4>
+                <h4 class="mt-5 fw-semibold text-dark">Gestión de Pedidos y Entregas</h4>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped bg-white shadow-sm">
+                    <table class="table table-bordered table-striped bg-white shadow-sm align-middle">
                         <thead class="table-dark"><tr><th>Ticket</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Acción</th></tr></thead>
-                        <tbody>${filasPedidos.length === 0 ? '<tr><td colspan="5" class="text-center">No hay pedidos registrados.</td></tr>' : filasPedidos}</tbody>
+                        <tbody>${filasPedidos.length === 0 ? '<tr><td colspan="5" class="text-center text-muted py-3">No hay pedidos registrados en el sistema.</td></tr>' : filasPedidos}</tbody>
                     </table>
                 </div>
 
-                <!-- MODAL FORMULARIO PRODUCTO (Reemplazar en admin.html) -->
+                <!-- MODAL PARA CREAR/EDITAR PRODUCTOS CON VALIDACIONES AVANZADAS -->
                 <div class="modal fade" id="modalProducto" tabindex="-1">
                     <div class="modal-dialog">
                         <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="modalTitulo">Gestión de Producto</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title fw-bold" id="modalTitulo">Gestión de Producto</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
                                 <form id="formProducto" onsubmit="guardarProducto(event)" novalidate>
                                     <input type="hidden" id="prodId">
                                     <div class="mb-3">
-                                        <label>Nombre del Accesorio</label>
-                                        <input type="text" class="form-control" id="prodNombre" required>
+                                        <label class="form-label fw-semibold">Nombre del Accesorio</label>
+                                        <input type="text" class="form-control" id="prodNombre" placeholder="Ej. Funda protectora..." required>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-semibold">Precio ($)</label>
+                                            <input type="number" step="0.01" min="0.01" class="form-control" id="prodPrecio" placeholder="0.00" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-semibold">Stock Inicial</label>
+                                            <input type="number" min="0" step="1" class="form-control" id="prodStock" placeholder="0" required>
+                                        </div>
                                     </div>
                                     <div class="mb-3">
-                                        <label>Precio ($)</label>
-                                        <input type="number" step="0.01" min="0.01" class="form-control" id="prodPrecio" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label>Categoría</label>
+                                        <label class="form-label fw-semibold">Categoría</label>
                                         <select class="form-select" id="prodCategoria" required>
                                             <option value="" disabled selected>Seleccione una categoría...</option>
                                             <option value="Audio">Audio</option>
-                                            <option value="Carga">Carga</option>
+                                            <option value="Carga">Carga General</option>
                                             <option value="Carga Apple">Carga Apple</option>
                                             <option value="Carga Samsung">Carga Samsung</option>
                                             <option value="Carga Huawei">Carga Huawei</option>
@@ -143,15 +161,13 @@
                                             <option value="Conectividad">Conectividad</option>
                                         </select>
                                     </div>
-                                    <div class="mb-3">
-                                        <label>Stock</label>
-                                        <input type="number" min="0" step="1" class="form-control" id="prodStock" required>
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">URL de la Imagen</label>
+                                        <input type="url" class="form-control" id="prodImagen" placeholder="https://..." required>
                                     </div>
-                                    <div class="mb-3">
-                                        <label>URL de Imagen</label>
-                                        <input type="url" class="form-control" id="prodImagen" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-success w-100">Guardar Cambios</button>
+                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">
+                                        <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Cambios
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -159,8 +175,71 @@
                 </div>
             `;
 
-            // LLAMAMOS A LA FUNCIÓN DE GRÁFICAS
-            renderizarGraficas();
+            // LLAMAR A LA GENERACIÓN DE GRÁFICAS DESPUÉS DE RENDERIZAR EL CONTENEDOR
+            renderizarGraficasAdmin();
+        }
+
+        // --- FUNCIÓN PARA GENERAR LAS GRÁFICAS CON CHART.JS ---
+        function renderizarGraficasAdmin() {
+            const pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+
+            // 1. Conteo de Productos más vendidos
+            const conteoProductos = {};
+            pedidos.forEach(pedido => {
+                pedido.productos.forEach(prod => {
+                    conteoProductos[prod.nombre] = (conteoProductos[prod.nombre] || 0) + 1;
+                });
+            });
+
+            // 2. Ventas por mes
+            const ventasPorMes = {};
+            const nombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+            pedidos.forEach(pedido => {
+                if (pedido.fecha) {
+                    const fechaObj = new Date(pedido.fecha);
+                    const mes = nombresMeses[fechaObj.getMonth()];
+                    ventasPorMes[mes] = (ventasPorMes[mes] || 0) + pedido.total;
+                }
+            });
+
+            // Destruir instancias previas para evitar conflictos al recargar
+            if (window.chartProd) window.chartProd.destroy();
+            if (window.chartMeses) window.chartMeses.destroy();
+
+            // Gráfica 1: Productos Más Vendidos (Pie)
+            const ctxProd = document.getElementById('graficaProductos').getContext('2d');
+            window.chartProd = new Chart(ctxProd, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(conteoProductos),
+                    datasets: [{
+                        label: 'Unidades Vendidas',
+                        data: Object.values(conteoProductos),
+                        backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0', '#6f42c1', '#fd7e14']
+                    }]
+                },
+                options: { responsive: true, plugins: { title: { display: true, text: 'Accesorios Más Vendidos' } } }
+            });
+
+            // Gráfica 2: Ingresos por Mes (Bar)
+            const ctxMeses = document.getElementById('graficaMeses').getContext('2d');
+            window.chartMeses = new Chart(ctxMeses, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(ventasPorMes),
+                    datasets: [{
+                        label: 'Ingresos Totales ($)',
+                        data: Object.values(ventasPorMes),
+                        backgroundColor: '#198754'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { title: { display: true, text: 'Ingresos Totales por Mes ($)' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
         }
 
         function abrirModalCrear() {
@@ -175,19 +254,31 @@
         }
 
         function abrirModalEditar(id) {
-            let productos = JSON.parse(localStorage.getItem('productos'));
+            let productos = JSON.parse(localStorage.getItem('productos')) || [];
             let p = productos.find(item => item.id === id);
-            document.getElementById('prodId').value = p.id;
-            document.getElementById('prodNombre').value = p.nombre;
-            document.getElementById('prodPrecio').value = p.precio;
-            document.getElementById('prodCategoria').value = p.categoria;
-            document.getElementById('prodStock').value = p.stock;
-            document.getElementById('prodImagen').value = p.imagen;
-            document.getElementById('modalTitulo').innerText = 'Editar Producto';
-            new bootstrap.Modal(document.getElementById('modalProducto')).show();
+            if (p) {
+                document.getElementById('prodId').value = p.id;
+                document.getElementById('prodNombre').value = p.nombre;
+                document.getElementById('prodPrecio').value = p.precio;
+
+                const selectCat = document.getElementById('prodCategoria');
+                const options = Array.from(selectCat.options);
+                const optionExists = options.some(opt => opt.value === p.categoria);
+
+                if (optionExists) {
+                    selectCat.value = p.categoria;
+                } else {
+                    const newOption = new Option(p.categoria, p.categoria, true, true);
+                    selectCat.add(newOption);
+                }
+
+                document.getElementById('prodStock').value = p.stock;
+                document.getElementById('prodImagen').value = p.imagen;
+                document.getElementById('modalTitulo').innerText = 'Editar Producto';
+                new bootstrap.Modal(document.getElementById('modalProducto')).show();
+            }
         }
 
-       // Reemplazar la función guardarProducto en los scripts de admin.html
         function guardarProducto(e) {
             e.preventDefault();
             const id = document.getElementById('prodId').value;
@@ -197,9 +288,8 @@
             const stock = parseInt(document.getElementById('prodStock').value);
             const imagen = document.getElementById('prodImagen').value.trim();
 
-            // Validaciones avanzadas
             if (!nombre || categoria === "") {
-                Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Por favor, complete todos los campos de texto y seleccione una categoría.' });
+                Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Por favor, complete todos los campos de texto y seleccione una categoría.' });
                 return;
             }
             if (isNaN(precio) || precio <= 0) {
@@ -210,7 +300,7 @@
                 Swal.fire({ icon: 'error', title: 'Stock Inválido', text: 'El stock no puede ser un número negativo.' });
                 return;
             }
-            
+
             const urlRegex = /^(https?:\/\/)/i;
             if (!urlRegex.test(imagen)) {
                 Swal.fire({ icon: 'error', title: 'URL Inválida', text: 'El enlace de la imagen debe comenzar con http:// o https://' });
@@ -229,97 +319,73 @@
 
             localStorage.setItem('productos', JSON.stringify(productos));
             bootstrap.Modal.getInstance(document.getElementById('modalProducto')).hide();
-            
-            Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El producto se ha guardado correctamente en el inventario.', showConfirmButton: false, timer: 1500 });
+
+            Swal.fire({
+                icon: 'success',
+                title: '¡Guardado!',
+                text: 'El producto se ha guardado correctamente en el inventario.',
+                showConfirmButton: false,
+                timer: 1500
+            });
             cargarPanelAdmin();
         }
 
         function eliminarProducto(id) {
             Swal.fire({
-                title: '¿Está seguro?',
-                text: "No podrá revertir esta acción.",
+                title: '¿Eliminar producto?',
+                text: "Esta acción no se puede deshacer y el accesorio se removerá del inventario.",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d',
                 confirmButtonText: 'Sí, eliminar',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    let productos = JSON.parse(localStorage.getItem('productos'));
+                    let productos = JSON.parse(localStorage.getItem('productos')) || [];
                     productos = productos.filter(p => p.id !== id);
                     localStorage.setItem('productos', JSON.stringify(productos));
                     cargarPanelAdmin();
-                    Swal.fire('¡Eliminado!', 'El producto ha sido borrado.', 'success');
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: 'El producto ha sido borrado exitosamente.',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
                 }
             });
         }
 
         function marcarEntregado(ticket) {
-            let pedidos = JSON.parse(localStorage.getItem('pedidos'));
-            let pedido = pedidos.find(p => p.ticket === ticket);
-            if (pedido) {
-                pedido.estado = 'Entregado';
-                localStorage.setItem('pedidos', JSON.stringify(pedidos));
-                cargarPanelAdmin();
-            }
-        }
+            Swal.fire({
+                title: 'Confirmar entrega',
+                text: `¿Desea marcar el pedido con código ${ticket} como entregado?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, entregado',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+                    let pedido = pedidos.find(p => p.ticket === ticket);
+                    if (pedido) {
+                        pedido.estado = 'Entregado';
+                        localStorage.setItem('pedidos', JSON.stringify(pedidos));
+                        cargarPanelAdmin();
 
-        function renderizarGraficas() {
-            const pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
-
-            // Lógica para: PRODUCTOS MÁS VENDIDOS
-            const conteoProductos = {};
-            pedidos.forEach(pedido => {
-                pedido.productos.forEach(prod => {
-                    conteoProductos[prod.nombre] = (conteoProductos[prod.nombre] || 0) + 1;
-                });
-            });
-
-            // VENTAS POR MES
-            const ventasPorMes = {};
-            const nombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-            pedidos.forEach(pedido => {
-                if (pedido.fecha) {
-                    const fechaObj = new Date(pedido.fecha);
-                    const mes = nombresMeses[fechaObj.getMonth()]; // Obtiene el nombre del mes (ej. "Ago")
-                    ventasPorMes[mes] = (ventasPorMes[mes] || 0) + pedido.total; // Suma los ingresos
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Actualizado',
+                            text: 'El estado del pedido se ha actualizado a Entregado.',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
                 }
-            });
-
-            // Evitar que las gráficas se dupliquen al recargar el panel
-            if (window.chartProd) window.chartProd.destroy();
-            if (window.chartMeses) window.chartMeses.destroy();
-
-            // Dibujar Gráfica 1: Productos Más Vendidos (Gráfico de Pastel)
-            const ctxProd = document.getElementById('graficaProductos').getContext('2d');
-            window.chartProd = new Chart(ctxProd, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(conteoProductos),
-                    datasets: [{
-                        label: 'Unidades Vendidas',
-                        data: Object.values(conteoProductos),
-                        backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0', '#6f42c1']
-                    }]
-                },
-                options: { responsive: true, plugins: { title: { display: true, text: 'Accesorios Más Vendidos' } } }
-            });
-
-            // Dibujar Gráfica 2: Ventas por Mes (Gráfico de Barras)
-            const ctxMeses = document.getElementById('graficaMeses').getContext('2d');
-            window.chartMeses = new Chart(ctxMeses, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(ventasPorMes),
-                    datasets: [{
-                        label: 'Ingresos Totales ($)',
-                        data: Object.values(ventasPorMes),
-                        backgroundColor: '#198754'
-                    }]
-                },
-                options: { responsive: true, plugins: { title: { display: true, text: 'Ingresos por Mes' } } }
             });
         }
     </script>

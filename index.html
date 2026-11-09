@@ -4,117 +4,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANEON Store - Catálogo</title>
-    <!-- Bootstrap 5 CSS -->
+    <title>ANEON - Catálogo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="src/css/css.css">
-    <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <link rel="stylesheet" href="src/css/css.css">
 </head>
 
 <body>
-
-    <!-- CONTENEDOR DONDE SE CARGARÁ EL HEADER DINÁMICAMENTE -->
     <div id="header-container"></div>
 
-    <!-- CONTENEDOR PRINCIPAL DE LA VISTA -->
     <div class="container my-4">
-        <div class="hero-section text-center rounded mb-4 shadow">
-            <h1>Accesorios Electrónicos de Alta Calidad</h1>
-            <p class="lead">Encuentra cargadores, audífonos, smartwatches y más al alcance de un clic.</p>
+        <div class="bg-primary bg-gradient text-white text-center p-5 rounded mb-5 shadow">
+            <h1 class="fw-bold"><i class="fa-solid fa-bolt text-warning"></i> ANEON</h1>
+            <p class="lead mb-0">Accesorios Electrónicos de Alta Calidad</p>
         </div>
-        <div class="row" id="contenedorCatalogo">
-            <!-- Los productos se cargan por JavaScript -->
-        </div>
+
+        <div id="react-root"></div>
     </div>
 
-    <div id="idFooter"></div>
+    <div id="footer-container"></div>
 
-    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script src="src/js/app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            cargarHeader('header-container');
-            cargarCatalogo();
-        });
+            if (typeof cargarHeader === 'function') cargarHeader('header-container');
 
-        function cargarCatalogo() {
-            const productos = JSON.parse(localStorage.getItem('productos')) || [];
-            const wishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
-            const sesion = getSesionActual();
-            const contenedor = document.getElementById('contenedorCatalogo');
-            
-            contenedor.innerHTML = productos.map(p => {
-                // Verificar si este producto ya está en los favoritos del usuario actual
+            fetch('src/layout/footer.html')
+                .then(response => {
+                    if (response.ok) return response.text();
+                    throw new Error('Footer no encontrado');
+                })
+                .then(html => document.getElementById('footer-container').innerHTML = html)
+                .catch(err => console.error(err));
+        });
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function CatalogoTienda() {
+            const [productosLocales, setProductosLocales] = useState([]);
+            const [wishlist, setWishlist] = useState([]);
+            const sesion = window.getSesionActual ? window.getSesionActual() : null;
+
+            useEffect(() => {
+                setProductosLocales(JSON.parse(localStorage.getItem('productos')) || []);
+                setWishlist(JSON.parse(localStorage.getItem('wishlist')) || []);
+
+            }, []);
+
+            const manejarFavorito = (idProducto) => {
+                if (!sesion || sesion.rol !== 'cliente') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Acceso Restringido',
+                        text: 'Debe iniciar sesión para guardar favoritos.'
+                    }).then(() => {
+                        window.location.href = 'src/pages/login.html';
+                    });
+                    return;
+                }
+
+                let currentWishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
+                const index = currentWishlist.findIndex(item => item.id === idProducto && item.email === sesion.email);
+
+                if (index > -1) {
+                    currentWishlist.splice(index, 1);
+                } else {
+                    const prod = productosLocales.find(p => p.id === idProducto);
+                    if (prod) currentWishlist.push({ ...prod, email: sesion.email });
+                }
+
+                localStorage.setItem('wishlist', JSON.stringify(currentWishlist));
+                setWishlist(currentWishlist);
+            };
+
+            const agregarAlCarritoReact = (idProducto) => {
+                if (!sesion || sesion.rol !== 'cliente') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Acceso Restringido',
+                        text: 'Debe iniciar sesión como cliente para comprar.'
+                    }).then(() => {
+                        window.location.href = 'src/pages/login.html';
+                    });
+                    return;
+                }
+
+                let producto = productosLocales.find(p => p.id === idProducto);
+                let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+                carrito.push(producto);
+                localStorage.setItem('carrito', JSON.stringify(carrito));
+
+                if (typeof window.cargarHeader === 'function') window.cargarHeader('header-container');
+
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Agregado!',
+                    text: `"${producto.nombre}" se agregó al carrito.`,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            };
+
+            const renderTarjeta = (p) => {
                 let esFavorito = false;
                 if (sesion) {
                     esFavorito = wishlist.some(item => item.id === p.id && item.email === sesion.email);
                 }
+
                 const corazonColor = esFavorito ? 'text-danger' : 'text-secondary';
                 const corazonIcono = esFavorito ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
+                const idProd = p.id;
+                const nombre = p.nombre;
+                const precio = p.precio;
+                const imagen = p.imagen;
+                const categoria = p.categoria;
 
-                return `
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 product-card shadow-sm position-relative">
-                        <!-- Botón de Favorito Flotante -->
-                        <button class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" 
-                                onclick="toggleWishlist(${p.id})" style="z-index: 10;">
-                            <i class="${corazonIcono} ${corazonColor} fs-5"></i>
-                        </button>
-                        
-                        <img src="${p.imagen}" class="card-img-top" alt="${p.nombre}">
-                        <div class="card-body d-flex flex-column">
-                            <span class="badge bg-secondary mb-2 align-self-start">${p.categoria}</span>
-                            <h5 class="card-title">${p.nombre}</h5>
-                            <p class="card-text text-success fw-bold fs-5">$${p.precio.toFixed(2)}</p>
-                            <p class="card-text text-muted small">Stock disponible: ${p.stock}</p>
-                            <button class="btn btn-primary mt-auto" onclick="agregarAlCarrito(${p.id})">
-                                <i class="fa-solid fa-cart-plus"></i> Agregar al Carrito
-                            </button>
+                return (
+                    <div className="col-md-4 col-lg-3 mb-4" key={idProd}>
+                        <div className="card h-100 shadow-sm border position-relative bg-white">
+                            {(
+                                <button className="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow border d-flex align-items-center justify-content-center"
+                                    onClick={() => manejarFavorito(p.id)} style={{ zIndex: 10, width: '40px', height: '40px' }}>
+                                    <i className={`${corazonIcono} ${corazonColor} fs-5`}></i>
+                                </button>
+                            )}
+
+                            <div className="bg-white p-4 text-center rounded-top">
+                                <img src={imagen} className="img-fluid" alt={nombre} style={{ height: '180px', objectFit: 'contain' }} />
+                            </div>
+
+                            <div className="card-body d-flex flex-column border-top bg-light">
+                                <span className="badge bg-secondary mb-3 align-self-start">{categoria}</span>
+                                <h6 className="card-title text-dark fw-semibold mb-2">{nombre}</h6>
+                                <p className="card-text text-success fw-bold fs-4 mb-3">${parseFloat(precio).toFixed(2)}</p>
+
+                                <p className="card-text text-muted small mb-4">Stock disponible: {p.stock}</p>
+
+                                <button className="btn btn-outline-primary mt-auto w-100 fw-medium"
+                                    onClick={() => agregarAlCarritoReact(p.id)}>
+                                    <i className="fa-solid fa-cart-plus me-1"></i> Agregar al Carrito
+                                </button>
+                            </div>
                         </div>
                     </div>
+                );
+            };
+
+            return (
+                <div>
+                    <h3 className="fw-bold mb-4 text-white "><i className="fa-solid fa-store text-primary"></i> Nuestro Catálogo</h3>
+                    <div className="row">
+                        {productosLocales.length > 0 ? productosLocales.map(p => renderTarjeta(p)) : <div className="col-12"><p className="text-muted">No hay productos locales disponibles.</p></div>}
+                    </div>
+
                 </div>
-                `;
-            }).join('');
+            );
         }
 
-        function agregarAlCarrito(id) {
-            const sesion = getSesionActual();
-            if (!sesion || sesion.rol !== 'cliente') {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Acceso Denegado',
-                    text: 'Debe iniciar sesión como cliente para comprar.'
-                }).then(() => {
-                    window.location.href = 'src/pages/login.html';
-                });
-                return;
-            }
-            let productos = JSON.parse(localStorage.getItem('productos'));
-            let producto = productos.find(p => p.id === id);
-            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-
-            carrito.push(producto);
-            localStorage.setItem('carrito', JSON.stringify(carrito));
-            cargarHeader('header-container');
-
-            // SweetAlert estilo Toast (Notificación pequeña)
-            Swal.fire({
-                icon: 'success',
-                title: '¡Agregado!',
-                text: `"${producto.nombre}" se agregó al carrito.`,
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 2000
-            });
-        }
+        const root = ReactDOM.createRoot(document.getElementById('react-root'));
+        root.render(<CatalogoTienda />);
     </script>
 </body>
 
