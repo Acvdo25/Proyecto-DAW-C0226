@@ -49,6 +49,8 @@
 
         function CatalogoTienda() {
             const [productosLocales, setProductosLocales] = useState([]);
+            const [productosAPI, setProductosAPI] = useState([]);
+            const [cargandoAPI, setCargandoAPI] = useState(true);
             const [wishlist, setWishlist] = useState([]);
             const sesion = window.getSesionActual ? window.getSesionActual() : null;
 
@@ -56,6 +58,16 @@
                 setProductosLocales(JSON.parse(localStorage.getItem('productos')) || []);
                 setWishlist(JSON.parse(localStorage.getItem('wishlist')) || []);
 
+                fetch('https://fakestoreapi.com/products/category/electronics?limit=4')
+                    .then(res => res.json())
+                    .then(data => {
+                        setProductosAPI(data);
+                        setCargandoAPI(false);
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        setCargandoAPI(false);
+                    });
             }, []);
 
             const manejarFavorito = (idProducto) => {
@@ -114,24 +126,24 @@
                 });
             };
 
-            const renderTarjeta = (p) => {
+            const renderTarjeta = (p,                                                                                                                                              esExterno = false) => {
                 let esFavorito = false;
-                if (sesion) {
+                if (sesion && !esExterno) {
                     esFavorito = wishlist.some(item => item.id === p.id && item.email === sesion.email);
                 }
 
                 const corazonColor = esFavorito ? 'text-danger' : 'text-secondary';
                 const corazonIcono = esFavorito ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
-                const idProd = p.id;
-                const nombre = p.nombre;
-                const precio = p.precio;
-                const imagen = p.imagen;
-                const categoria = p.categoria;
+                const idProd = esExterno ? `API-${p.id}` : p.id;
+                const nombre = esExterno ? p.title : p.nombre;
+                const precio = esExterno ? p.price : p.precio;
+                const imagen = esExterno ? p.image : p.imagen;
+                const categoria = esExterno ? 'Importación' : p.categoria;
 
                 return (
                     <div className="col-md-4 col-lg-3 mb-4" key={idProd}>
                         <div className="card h-100 shadow-sm border position-relative bg-white">
-                            {(
+                            {!esExterno && (
                                 <button className="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow border d-flex align-items-center justify-content-center"
                                     onClick={() => manejarFavorito(p.id)} style={{ zIndex: 10, width: '40px', height: '40px' }}>
                                     <i className={`${corazonIcono} ${corazonColor} fs-5`}></i>
@@ -143,14 +155,18 @@
                             </div>
 
                             <div className="card-body d-flex flex-column border-top bg-light">
-                                <span className="badge bg-secondary mb-3 align-self-start">{categoria}</span>
+                                <span className={`badge ${esExterno ? 'bg-info text-dark' : 'bg-secondary'} mb-3 align-self-start`}>{categoria}</span>
                                 <h6 className="card-title text-dark fw-semibold mb-2">{nombre}</h6>
                                 <p className="card-text text-success fw-bold fs-4 mb-3">${parseFloat(precio).toFixed(2)}</p>
 
-                                <p className="card-text text-muted small mb-4">Stock disponible: {p.stock}</p>
+                                {!esExterno ? (
+                                    <p className="card-text text-muted small mb-4">Stock disponible: {p.stock}</p>
+                                ) : (
+                                    <p className="card-text text-primary small mb-4"><i className="fa-solid fa-plane"></i> Envío Internacional</p>
+                                )}
 
                                 <button className="btn btn-outline-primary mt-auto w-100 fw-medium"
-                                    onClick={() => agregarAlCarritoReact(p.id)}>
+                                    onClick={() => esExterno ? Swal.fire('Aviso', 'Los productos internacionales estarán disponibles pronto.', 'info') : agregarAlCarritoReact(p.id)}>
                                     <i className="fa-solid fa-cart-plus me-1"></i> Agregar al Carrito
                                 </button>
                             </div>
@@ -163,9 +179,23 @@
                 <div>
                     <h3 className="fw-bold mb-4 text-white "><i className="fa-solid fa-store text-primary"></i> Nuestro Catálogo</h3>
                     <div className="row">
-                        {productosLocales.length > 0 ? productosLocales.map(p => renderTarjeta(p)) : <div className="col-12"><p className="text-muted">No hay productos locales disponibles.</p></div>}
+                        {productosLocales.length > 0 ? productosLocales.map(p => renderTarjeta(p, false)) : <div className="col-12"><p className="text-muted">No hay productos locales disponibles.</p></div>}
                     </div>
 
+                    <hr className="my-5 text-secondary opacity-25" />
+
+                    <h3 className="fw-bold mb-4 text-white"><i className="fa-solid fa-globe text-info"></i> Proveedores Internacionales</h3>
+
+                    {cargandoAPI ? (
+                        <div className="text-center my-5 py-5">
+                            <div className="spinner-border text-primary" role="status"></div>
+                            <p className="mt-3 text-muted fw-medium">Cargando catálogo internacional...</p>
+                        </div>
+                    ) : (
+                        <div className="row">
+                            {productosAPI.map(p => renderTarjeta(p, true))}
+                        </div>
+                    )}
                 </div>
             );
         }
