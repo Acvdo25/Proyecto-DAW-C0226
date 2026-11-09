@@ -3,118 +3,153 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>ANEON - Carrito de Compras</title>
-    <!-- Bootstrap 5 CSS -->
+    <title>ANEON - Carrito</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="../css/css.css">
-    <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <link rel="stylesheet" href="../css/css.css">
 </head>
 
 <body class="bg-light">
-
-    <!-- CONTENEDOR DEL NAVBAR DINÁMICO -->
     <div id="header-container"></div>
+    <div id="react-root" class="container my-4"></div>
+    <div id="footer-container"></div>
 
-    <!-- CONTENEDOR PRINCIPAL DEL CARRITO -->
-    <div class="container my-4" id="contenedorCarrito">
-        <!-- La tabla y los productos se cargan dinámicamente mediante JavaScript -->
-    </div>
-
-    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            cargarHeader('header-container');
-            const sesion = getSesionActual();
-            if (!sesion || sesion.rol !== 'cliente') {
-                Swal.fire({ icon: 'error', title: 'Acceso Restringido', text: 'Debe iniciar sesión como cliente para ver el carrito.' }).then(() => { window.location.href = 'login.html'; });
-                return;
-            }
-            cargarCarrito();
+            if (typeof cargarHeader === 'function') cargarHeader('header-container');
+            fetch('../layout/footer.html')
+                .then(res => res.ok ? res.text() : Promise.reject('Error footer'))
+                .then(html => document.getElementById('footer-container').innerHTML = html)
+                .catch(err => console.error(err));
         });
+    </script>
 
-        function cargarCarrito() {
-            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-            let total = carrito.reduce((sum, item) => sum + item.precio, 0);
-            let contenedor = document.getElementById('contenedorCarrito');
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-            let filas = carrito.map((item, index) => `
-                <tr>
-                    <td><img src="${item.imagen}" style="width: 50px; height: 50px; object-fit: cover;" class="rounded"></td>
-                    <td>${item.nombre}</td>
-                    <td>$${item.precio.toFixed(2)}</td>
-                    <td><button class="btn btn-sm btn-danger" onclick="eliminarDelCarrito(${index})"><i class="fa-solid fa-trash"></i></button></td>
-                </tr>
-            `).join('');
+        function CarritoReact() {
+            const [carrito, setCarrito] = useState([]);
+            const [sesion, setSesion] = useState(null);
 
-            contenedor.innerHTML = `
-                <h2>Carrito de Compras</h2>
-                <hr>
-                ${carrito.length === 0 ? `
-                    <div class="alert alert-info text-center">
-                        <p class="mb-0">Su carrito está vacío. ¡Explore el catálogo para agregar accesorios!</p>
-                        <a href="../../index.html" class="btn btn-primary mt-3">Ir al Catálogo</a>
-                    </div>
-                ` : `
-                    <div class="table-responsive">
-                        <table class="table table-striped bg-white shadow-sm align-middle">
-                            <thead class="table-dark">
-                                <tr><th>Imagen</th><th>Producto</th><th>Precio</th><th>Acción</th></tr>
-                            </thead>
-                            <tbody>${filas}</tbody>                         </table>                     </div>                     <h4 class="text-end mt-3">Total a Pagar: $${total.toFixed(2)}</h4>
-                    <button class="btn btn-success float-end mt-2" onclick="confirmarCompra()">
-                        <i class="fa-solid fa-check"></i> Confirmar Pedido y Generar Ticket
-                    </button>
-                `}
-            `;
-        }
+            useEffect(() => {
+                const sessionActual = window.getSesionActual ? window.getSesionActual() : null;
+                setSesion(sessionActual);
 
-        function eliminarDelCarrito(index) {
-            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-            carrito.splice(index, 1);
-            localStorage.setItem('carrito', JSON.stringify(carrito));
+                if (!sessionActual || sessionActual.rol !== 'cliente') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Acceso Restringido',
+                        text: 'Debe iniciar sesión como cliente para ver el carrito.'
+                    }).then(() => {
+                        window.location.href = 'login.html';
+                    });
+                    return;
+                }
 
-            // Recargar la vista del carrito y actualizar el contador del navbar
-            cargarHeader('header-container');
-            cargarCarrito();
-        }
+                setCarrito(JSON.parse(localStorage.getItem('carrito')) || []);
+            }, []);
 
-        function confirmarCompra() {
-            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
-            let sesion = getSesionActual();
-            if (carrito.length === 0) return;
-
-            const codigoTicket = 'TICKET-' + Math.floor(100000 + Math.random() * 900000);
-            const nuevoPedido = {
-                ticket: codigoTicket,
-                cliente: sesion.nombre,
-                email: sesion.email,
-                productos: carrito,
-                total: carrito.reduce((sum, item) => sum + item.precio, 0),
-                estado: 'Pendiente de Entrega',
-                fecha: new Date().toISOString() // AGREGAMOS LA FECHA ACTUAL AQUÍ
+            const eliminarItem = (index) => {
+                const nuevoCarrito = [...carrito];
+                nuevoCarrito.splice(index, 1);
+                localStorage.setItem('carrito', JSON.stringify(nuevoCarrito));
+                setCarrito(nuevoCarrito);
+                if (typeof window.cargarHeader === 'function') window.cargarHeader('header-container');
             };
 
-            let pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
-            pedidos.push(nuevoPedido);
-            localStorage.setItem('pedidos', JSON.stringify(pedidos));
-            localStorage.setItem('carrito', JSON.stringify([]));
+            const confirmarCompraReact = () => {
+                if (carrito.length === 0) return;
 
-            Swal.fire({
-                icon: 'success',
-                title: '¡Compra Confirmada!',
-                text: `Su código de Ticket es: ${codigoTicket}`,
-                confirmButtonText: 'Ver mis compras'
-            }).then(() => {
-                window.location.href = 'historial.html';
-            });
+                const codigoTicket = 'TICKET-' + Math.floor(100000 + Math.random() * 900000);
+                const nuevoPedido = {
+                    ticket: codigoTicket,
+                    cliente: sesion.nombre,
+                    email: sesion.email,
+                    productos: carrito,
+                    total: carrito.reduce((sum, item) => sum + item.precio, 0),
+                    estado: 'Pendiente de Entrega',
+                    fecha: new Date().toISOString()
+                };
+
+                const pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+                pedidos.push(nuevoPedido);
+                localStorage.setItem('pedidos', JSON.stringify(pedidos));
+                localStorage.setItem('carrito', JSON.stringify([]));
+
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Compra Confirmada!',
+                    text: `Su código de Ticket es: ${codigoTicket}`,
+                    confirmButtonText: 'Ver mis compras'
+                }).then(() => {
+                    window.location.href = 'historial.html';
+                });
+            };
+
+            const total = carrito.reduce((sum, item) => sum + item.precio, 0);
+
+            if (!sesion || sesion.rol !== 'cliente') return null;
+
+            return (
+                <div>
+                    <h2 className="fw-bold mb-4 text-dark"><i className="fa-solid fa-cart-shopping text-primary"></i> Carrito de Compras</h2>
+                    <hr className="text-secondary mb-4" />
+
+                    {carrito.length === 0 ? (
+                        <div className="alert alert-info text-center shadow-sm p-4 border">
+                            <i className="fa-solid fa-cart-arrow-down fa-3x text-muted mb-3"></i>
+                            <h4 className="alert-heading text-dark">Su carrito está vacío</h4>
+                            <p className="text-muted">¡Explore el catálogo para agregar accesorios de alta calidad!</p>
+                            <a href="../../index.html" className="btn btn-primary mt-2">Ir al Catálogo</a>
+                        </div>
+                    ) : (
+                        <div>
+                            <div className="table-responsive bg-white shadow-sm border rounded">
+                                <table className="table table-striped align-middle mb-0">
+                                    <thead className="table-dark">
+                                        <tr>
+                                            <th>Imagen</th>
+                                            <th>Producto</th>
+                                            <th>Precio</th>
+                                            <th className="text-center">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {carrito.map((item, idx) => (
+                                            <tr key={idx}>
+                                                <td><img src={item.imagen} alt={item.nombre} style={{ width: '50px', height: '50px', objectFit: 'contain' }} className="bg-light border rounded" /></td>
+                                                <td className="fw-medium">{item.nombre}</td>
+                                                <td className="text-success fw-bold">${item.precio.toFixed(2)}</td>
+                                                <td className="text-center">
+                                                    <button className="btn btn-sm btn-outline-danger" onClick={() => eliminarItem(idx)}>
+                                                        <i className="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center mt-4 bg-white p-4 shadow-sm border rounded">
+                                <h4 className="mb-0 text-dark">Total a Pagar: <span className="text-success">${total.toFixed(2)}</span></h4>
+                                <button className="btn btn-success px-4 py-2 fw-medium shadow-sm" onClick={confirmarCompraReact}>
+                                    <i className="fa-solid fa-check me-2"></i>Confirmar Pedido
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
         }
+
+        const root = ReactDOM.createRoot(document.getElementById('react-root'));
+        root.render(<CarritoReact />);
     </script>
 </body>
 
