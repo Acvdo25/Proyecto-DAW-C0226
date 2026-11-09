@@ -4,83 +4,127 @@
 <head>
     <meta charset="UTF-8">
     <title>ANEON - Mis Compras</title>
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="../css/css.css">
-    <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <link rel="stylesheet" href="../css/css.css">
 </head>
 
 <body class="bg-light">
-
-    <!-- CONTENEDOR DEL NAVBAR DINÁMICO -->
     <div id="header-container"></div>
+    <div id="react-root" class="container my-4"></div>
+    <div id="footer-container"></div>
 
-    <!-- CONTENEDOR PRINCIPAL DEL HISTORIAL -->
-    <div class="container my-4" id="contenedorHistorial">
-        <!-- Los pedidos del cliente se cargan dinámicamente mediante JavaScript -->
-    </div>
-
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- SCRIPT PRINCIPAL (Subiendo un nivel con ../ para llegar a src/js/app.js) -->
     <script src="../js/app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            cargarHeader('header-container');
-            const sesion = getSesionActual();
-            if (!sesion || sesion.rol !== 'cliente') {
-                Swal.fire({ icon: 'error', title: 'Acceso Restringido', text: 'Debe iniciar sesión como cliente para ver su historial.' }).then(() => { window.location.href = 'login.html'; });
-                return;
-            }
-            cargarHistorial();
+            if (typeof cargarHeader === 'function') cargarHeader('header-container');
+            fetch('../layout/footer.html')
+                .then(res => res.ok ? res.text() : Promise.reject('Error footer'))
+                .then(html => document.getElementById('footer-container').innerHTML = html)
+                .catch(err => console.error(err));
         });
+    </script>
 
-        function cargarHistorial() {
-            const sesion = getSesionActual();
-            let pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-            // Filtramos únicamente los pedidos que coincidan con el correo del cliente conectado
-            let misPedidos = pedidos.filter(p => p.email === sesion.email);
-            let contenedor = document.getElementById('contenedorHistorial');
+        function HistorialReact() {
+            const [pedidos, setPedidos] = useState([]);
+            const [sesion, setSesion] = useState(null);
 
-            let html = misPedidos.map(p => `
-                <div class="card mb-3 shadow-sm">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <span><strong>Código de Ticket:</strong> ${p.ticket}</span>
-                        <span><strong>Estado:</strong> <span class="badge ${p.estado === 'Entregado' ? 'bg-success' : 'bg-warning text-dark'}">${p.estado}</span></span>
-                    </div>
-                    <div class="card-body">
-                        <p class="mb-2"><strong>Cliente:</strong> ${p.cliente}</p>
-                        <p class="mb-2"><strong>Total Pagado:</strong> $${p.total.toFixed(2)}</p>
-                        <h6 class="mt-3">Accesorios Adquiridos:</h6>
-                        <ul class="list-group mb-2">
-                            ${p.productos.map(prod => `
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span>${prod.nombre} (${prod.categoria})</span>                                     <span class="text-success fw-bold">$${prod.precio.toFixed(2)}</span>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
+            useEffect(() => {
+                const sessionActual = window.getSesionActual ? window.getSesionActual() : null;
+                setSesion(sessionActual);
+
+                if (!sessionActual || sessionActual.rol !== 'cliente') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Acceso Restringido',
+                        text: 'Debe iniciar sesión como cliente para ver su historial.'
+                    }).then(() => {
+                        window.location.href = 'login.html';
+                    });
+                    return;
+                }
+
+                const todosPedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+                setPedidos(todosPedidos.filter(p => p.email === sessionActual.email));
+            }, []);
+
+            if (!sesion || sesion.rol !== 'cliente') return null;
+
+            return (
+                <div>
+                    <h2 className="fw-bold mb-4 text-dark"><i className="fa-solid fa-clock-rotate-left text-primary"></i> Historial de Compras</h2>
+                    <hr className="text-secondary mb-4" />
+
+                    {pedidos.length === 0 ? (
+                        <div className="alert alert-info text-center shadow-sm p-4 border">
+                            <p className="mb-0">Aún no ha realizado ningún pedido ni generado tickets.</p>
+                            <a href="../../index.html" className="btn btn-primary mt-3">Ver Catálogo de Productos</a>
+                        </div>
+                    ) : (
+                        <div className="row">
+                            {pedidos.map((p, idx) => (
+                                <div className="col-12 mb-4" key={idx}>
+                                    <div className="card shadow-sm border">
+                                        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+                                            <span className="fw-medium"><i className="fa-solid fa-receipt me-2"></i>Ticket: {p.ticket}</span>
+                                            <span>
+                                                Estado: <span className={`badge ms-2 ${p.estado === 'Entregado' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                                                    {p.estado}
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div className="card-body bg-white">
+                                            <div className="row">
+                                                <div className="col-md-4 border-end">
+                                                    <p className="mb-2 text-muted">Cliente</p>
+                                                    <p className="fw-medium">{p.cliente}</p>
+                                                    <p className="mb-2 text-muted mt-3">Total Pagado</p>
+                                                    <h4 className="text-success fw-bold">${p.total.toFixed(2)}</h4>
+                                                    {p.fecha && (
+                                                        <div className="mt-3">
+                                                            <p className="mb-1 text-muted small">Fecha de compra</p>
+                                                            <p className="small fw-medium">{new Date(p.fecha).toLocaleDateString()}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="col-md-8">
+                                                    <h6 className="text-dark fw-bold mb-3">Accesorios Adquiridos:</h6>
+                                                    <ul className="list-group list-group-flush">
+                                                        {p.productos.map((prod, pIdx) => (
+                                                            <li className="list-group-item d-flex justify-content-between align-items-center px-0" key={pIdx}>
+                                                                <div className="d-flex align-items-center">
+                                                                    <img src={prod.imagen} alt={prod.nombre} style={{ width: '40px', height: '40px', objectFit: 'contain' }} className="bg-light border rounded me-3" />
+                                                                    <div>
+                                                                        <span className="fw-medium d-block">{prod.nombre}</span>
+                                                                        <span className="badge bg-secondary">{prod.categoria}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-success fw-bold">${prod.precio.toFixed(2)}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            `).join('');
-
-            contenedor.innerHTML = `
-                <h2>Historial de Mis Compras</h2>
-                <hr>
-                ${misPedidos.length === 0 ? `
-                    <div class="alert alert-info text-center">
-                        <p class="mb-0">Aún no ha realizado ningún pedido ni generado tickets.</p>
-                        <a href="../../index.html" class="btn btn-primary mt-3">Ver Catálogo de Productos</a>
-                    </div>
-                ` : html}
-            `;
+            );
         }
+
+        const root = ReactDOM.createRoot(document.getElementById('react-root'));
+        root.render(<HistorialReact />);
     </script>
 </body>
 
