@@ -136,3 +136,12 @@ Para probar el sistema rápidamente y ver ambos roles, puedes utilizar las sigui
   - **Contraseña:** `adminadmin`
 
 ---
+
+---
+
+## 📄 Licencia
+Este proyecto está bajo la licencia **Creative Commons Atribución-NoComercial-CompartirIgual 4.0 Internacional (CC BY-NC-SA 4.0)**.
+
+[![Licencia Creative Commons](https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+Puedes consultar los términos completos en el archivo [LICENSE](./LICENSE) de este repositorio.
