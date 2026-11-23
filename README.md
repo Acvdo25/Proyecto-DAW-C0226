@@ -170,5 +170,5 @@ Archivos SVG compatibles con Figma.
 ![Mockup Gestión de Inventario](docs/mockups/06-inventario.svg)
 
 ## Diseño en Figma
-[Ver los 6 mockups de ANEON en Figma](https://www.figma.com/design/dHPQaj4lEQEaqB6kP04cFt/Untitled?node-id=0-1)
+[ANEON – Mockups de Diseño | Proyecto Final DAW901](https://www.figma.com/design/dHPQaj4lEQEaqB6kP04cFt/Untitled?node-id=0-1)
 
