@@ -145,3 +145,26 @@ Este proyecto está bajo la licencia **Creative Commons Atribución-NoComercial-
 [![Licencia Creative Commons](https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 Puedes consultar los términos completos en el archivo [LICENSE](./LICENSE) de este repositorio.
+
+## Mockups de diseño - ANEON
+
+Propuestas visuales académicas basadas en las pantallas del sistema desarrollado.
+Archivos SVG compatibles con Figma.
+
+### Inicio y Catálogo
+![Mockup Inicio y Catálogo](docs/mockups/01-inicio.svg)
+
+### Mi Lista de Deseos
+![Mockup Mi Lista de Deseos](docs/mockups/02-favoritos.svg)
+
+### Carrito de Compras
+![Mockup Carrito de Compras](docs/mockups/03-carrito.svg)
+
+### Iniciar Sesión
+![Mockup Iniciar Sesión](docs/mockups/04-login.svg)
+
+### Panel de Administración
+![Mockup Panel de Administración](docs/mockups/05-admin.svg)
+
+### Gestión de Inventario
+![Mockup Gestión de Inventario](docs/mockups/06-inventario.svg)
